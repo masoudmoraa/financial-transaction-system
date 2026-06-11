@@ -21,3 +21,11 @@ spring:
     user:
       name: admin1
       password: admin1pass
+#
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        orm:
+#          jdbc:
+#            bind: trace
