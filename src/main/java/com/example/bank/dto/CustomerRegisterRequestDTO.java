@@ -3,6 +3,7 @@ package com.example.bank.dto;
 import com.example.bank.enums.CustomerType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -21,7 +22,7 @@ public class CustomerRegisterRequestDTO {
     private String lastName;
 
     @NotBlank(message = "National code cannot be blank")
-    @Size(min = 10, max = 10, message = "National code must be exactly 10 digits")
+    @Pattern(regexp = "^\\d{10}$", message = "National code must be exactly 10 digits.")
     private String nationalCode;
 
     @NotNull(message = "Birthday is required")
@@ -31,7 +32,7 @@ public class CustomerRegisterRequestDTO {
     private CustomerType customerType;
 
     @NotBlank(message = "Phone number cannot be blank")
-    @Size(min = 11, max = 11, message = "Phone number must be exactly 11 digits")
+    @Pattern(regexp = "^09\\d{9}$", message = "Phone number must be 11 digits and start with 09.")
     private String phoneNumber;
 
     @NotBlank(message = "Address cannot be blank")
@@ -39,6 +40,6 @@ public class CustomerRegisterRequestDTO {
     private String address;
 
     @NotBlank(message = "Postal code cannot be blank")
-    @Size(min = 10, max = 10, message = "Postal code must be exactly 10 digits")
+    @Pattern(regexp = "^\\d{10}$", message = "Postal code must be exactly 10 digits.")
     private String postal_code;
 }

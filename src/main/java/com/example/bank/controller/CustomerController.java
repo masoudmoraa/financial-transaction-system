@@ -30,4 +30,10 @@ public class CustomerController {
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+
+    @PostMapping("/update")
+    public ResponseEntity<ApiResponse<String>> updateCustomer(@Valid @RequestBody CustomerUpdateRequestDTO dto) {
+        customerService.updateCustomer(dto);
+        return new ResponseEntity<>(ApiResponse.success("Updated successfully.", null), HttpStatus.OK);
+    }
 }
