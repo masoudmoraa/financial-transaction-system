@@ -24,7 +24,7 @@ public class AccountNumberGenerator {
 
     private static final String BANK_PREFIX = "60";
 
-    public synchronized String generate() {
+    public String generate() {
         LocalDateTime now = LocalDateTime.now();
 
         int month = now.getMonthValue();

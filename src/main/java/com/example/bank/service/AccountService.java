@@ -1,5 +1,6 @@
 package com.example.bank.service;
 
+import com.example.bank.dto.AccountDetailsResponseDTO;
 import com.example.bank.dto.CreateAccountResponseDTO;
 import com.example.bank.entity.Account;
 import com.example.bank.entity.Customer;
@@ -35,5 +36,42 @@ public class AccountService {
                 .accountNumber(account.getAccountNumber())
                 .balance(account.getBalance())
                 .build();
+    }
+
+    public String getAccountNumberByNationalCode(String nationalCode) {
+        Account account = accountRepository.findByCustomerNationalCode(nationalCode)
+                .orElseThrow(() -> new IllegalArgumentException("No account found for the given national code."));
+        return account.getAccountNumber();
+    }
+
+    public AccountDetailsResponseDTO getAccountDetails(String accountNumber) {
+        System.out.println(accountNumber);
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found with number: " + accountNumber));
+
+        Customer customer = account.getCustomer();
+
+        return AccountDetailsResponseDTO.builder()
+                .accountNumber(account.getAccountNumber())
+                .balance(account.getBalance())
+                .status(account.getStatus())
+                .createdAt(account.getCreatedAt())
+
+                .firstName(customer.getFirstName())
+                .lastName(customer.getLastName())
+                .nationalCode(customer.getNationalCode())
+                .birthday(customer.getBirthday())
+                .customerType(customer.getCustomerType())
+                .phoneNumber(customer.getPhoneNumber())
+                .updatedAt(customer.getUpdatedAt())
+                .address(customer.getAddress())
+                .postalCode(customer.getPostalCode())
+                .build();
+    }
+
+    public Integer getAccountBalance(String accountNumber) {
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found with number: " + accountNumber));
+        return account.getBalance();
     }
 }

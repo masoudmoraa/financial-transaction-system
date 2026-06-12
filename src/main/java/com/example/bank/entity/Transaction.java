@@ -12,7 +12,7 @@ import com.example.bank.enums.TransactionStatus;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TransactionRequest {
+public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "tx_req_seq")

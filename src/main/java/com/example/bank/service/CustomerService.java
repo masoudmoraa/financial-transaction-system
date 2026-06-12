@@ -41,7 +41,7 @@ public class CustomerService {
                 .customerType(dto.getCustomerType())
                 .phoneNumber(dto.getPhoneNumber())
                 .address(dto.getAddress())
-                .postal_code(dto.getPostal_code())
+                .postalCode(dto.getPostal_code())
                 .build();
 
         Customer savedCustomer = customerRepository.save(customer);
@@ -104,17 +104,15 @@ public class CustomerService {
         }
 
 
-        if (dto.getPostalCode() != null && !dto.getPostalCode().equals(customer.getPostal_code())) {
-            auditLogs.add(createLog(customer, "postalCode", customer.getPostal_code(), dto.getPostalCode(), operator));
-            customer.setPostal_code(dto.getPostalCode());
+        if (dto.getPostalCode() != null && !dto.getPostalCode().equals(customer.getPostalCode())) {
+            auditLogs.add(createLog(customer, "postalCode", customer.getPostalCode(), dto.getPostalCode(), operator));
+            customer.setPostalCode(dto.getPostalCode());
         }
 
         if (!auditLogs.isEmpty()) {
             auditLogRepository.saveAll(auditLogs);
         }
-
         customerRepository.save(customer);
-        return;
     }
 
     private CustomerAuditLog createLog(Customer customer, String field, String oldVal, String newVal, String by) {

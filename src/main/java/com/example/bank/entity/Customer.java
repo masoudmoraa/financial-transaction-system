@@ -38,17 +38,18 @@ public class Customer {
     @Column(name = "phone_number", nullable = false, length = 11)
     private String phoneNumber;
 
+    @Column(name = "address", nullable = false, length = 100)
+    private String address;
+
+    @Column(name = "postal_code", nullable = false, length = 10)
+    private String postalCode;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "address", nullable = false, length = 100)
-    private String address;
-
-    @Column(name = "postal_code", nullable = false, length = 10)
-    private String postal_code;
 
     @PrePersist
     protected void onCreate() {

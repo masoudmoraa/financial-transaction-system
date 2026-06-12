@@ -22,7 +22,7 @@ public class TransactionLeg {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id", nullable = false)
-    private TransactionRequest transaction;
+    private Transaction transaction;
 
     @Column(name = "account_number", nullable = false, length = 20)
     private String accountNumber;
