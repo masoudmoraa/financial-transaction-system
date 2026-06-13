@@ -2,6 +2,7 @@ spring:
   application:
     name: bank
 
+
   datasource:
     url: jdbc:oracle:thin:@localhost:5500/bank_pdb
     username: bank_user
@@ -27,6 +28,13 @@ spring:
     port: 5672
     username: guest
     password: guest
+
+bank:
+  account-number: 60606000060000
+  transferFee:
+    percentage: 0.1
+    min-limit: 1000
+    max-limit: 50000
 
 logging:
   level:

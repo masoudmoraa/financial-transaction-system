@@ -1,5 +1,6 @@
 package com.example.bank.service;
 
+import com.example.bank.config.BankConfig;
 import com.example.bank.config.RabbitMQConfig;
 import com.example.bank.dto.TransactionRequestDTO;
 import com.example.bank.dto.TransactionResponseDTO;
@@ -14,6 +15,7 @@ import com.example.bank.enums.TransactionType;
 import com.example.bank.repository.AccountRepository;
 import com.example.bank.repository.TransactionLegRepository;
 import com.example.bank.repository.TransactionRepository;
+import com.example.bank.util.TransactionFeeCalculator;
 import com.example.bank.util.TransactionTrackingCodeGenerator;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
@@ -26,18 +28,23 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final TransactionLegRepository legRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final TransactionFeeCalculator feeCalculator;
+    private final BankConfig bankConfig;
 
-    private static final Integer TRANSFER_FEE = 5;
     private static final String BANK_FEE_ACCOUNT = "60606060606060";
 
     public TransactionService(TransactionRepository transactionRepository,
                               AccountRepository accountRepository,
                               TransactionLegRepository legRepository,
-                              RabbitTemplate rabbitTemplate) {
+                              RabbitTemplate rabbitTemplate,
+                              TransactionFeeCalculator feeCalculator,
+                              BankConfig bankConfig) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.legRepository = legRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.feeCalculator = feeCalculator;
+        this.bankConfig = bankConfig;
     }
 
 
@@ -149,7 +156,8 @@ public class TransactionService {
         Account destAccount = getActiveAccountWithLock(dto.getDestinationAccount().equals(
                 accountsForLocking[0]) ? accountsForLocking[0] : accountsForLocking[1]);
 
-        int totalDeduction = dto.getAmount() + TRANSFER_FEE;
+        int calculatedFee = feeCalculator.calculateTransferFee(dto.getAmount());
+        int totalDeduction = dto.getAmount() + calculatedFee;
 
         if (srcAccount.getBalance() < totalDeduction) {
             throw new IllegalArgumentException("Insufficient balance to cover transfer amount and fixed service fee.");
@@ -162,25 +170,25 @@ public class TransactionService {
 
 
         createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT, TransactionType.TRANSFER,
-                dto.getAmount(), srcAccount.getBalance() + TRANSFER_FEE);
+                dto.getAmount(), srcAccount.getBalance() + calculatedFee);
         createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT, TransactionType.TRANSFER,
-                TRANSFER_FEE, srcAccount.getBalance());
+                calculatedFee, srcAccount.getBalance());
 
         // (Fee from Src to Bank)
         Transaction feeTx = new Transaction();
         feeTx.setTrackingCode("FEE#" + tx.getTrackingCode());
         feeTx.setSourceAccount(srcAccount.getAccountNumber());
-        feeTx.setDestinationAccount(BANK_FEE_ACCOUNT);
-        feeTx.setAmount(TRANSFER_FEE);
+        feeTx.setDestinationAccount(bankConfig.getAccountNumber());
+        feeTx.setAmount(calculatedFee);
         feeTx.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(feeTx);
 
 
         createLeg(feeTx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
-                TransactionType.TRANSFER, TRANSFER_FEE, srcAccount.getBalance());
+                TransactionType.TRANSFER, calculatedFee, srcAccount.getBalance());
 
         createLeg(feeTx, BANK_FEE_ACCOUNT, TransactionDirection.CREDIT,
-                TransactionType.TRANSFER, TRANSFER_FEE, 0);
+                TransactionType.TRANSFER, calculatedFee, 0);
     }
 
     private Account getActiveAccountWithLock(String accountNumber) {
