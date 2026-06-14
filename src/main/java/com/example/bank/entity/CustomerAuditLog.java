@@ -31,8 +31,9 @@ public class CustomerAuditLog {
     @Column(name = "new_value", length = 255)
     private String newValue;
 
-    @Column(name = "changed_by", nullable = false, length = 50)
-    private String changedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "changed_by", nullable = false)
+    private Admin changedBy;
 
     @Column(name = "changed_at", nullable = false, updatable = false)
     private LocalDateTime changedAt;

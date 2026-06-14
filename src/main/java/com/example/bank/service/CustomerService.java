@@ -2,7 +2,6 @@ package com.example.bank.service;
 
 import com.example.bank.dto.*;
 import com.example.bank.entity.Customer;
-import com.example.bank.entity.CustomerAuditLog;
 import com.example.bank.repository.CustomerAuditLogRepository;
 import com.example.bank.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
@@ -15,13 +14,13 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-    private final CustomerAuditLogRepository auditLogRepository;
     private final AccountService accountService;
+    private final CustomerAuditLogService auditLogService;
 
-    public CustomerService(CustomerRepository customerRepository, CustomerAuditLogRepository auditLogRepository, AccountService accountService) {
+    public CustomerService(CustomerRepository customerRepository, CustomerAuditLogRepository auditLogRepository, AccountService accountService, CustomerAuditLogService auditLogService) {
         this.customerRepository = customerRepository;
-        this.auditLogRepository = auditLogRepository;
         this.accountService = accountService;
+        this.auditLogService = auditLogService;
     }
 
 
@@ -55,73 +54,59 @@ public class CustomerService {
         Customer customer = customerRepository.findById(dto.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + dto.getId()));
 
-        List<CustomerAuditLog> auditLogs = new ArrayList<>();
-        String operator = "SYSTEM_USER";
-
+        List<AuditLogPendingDto> pendingLogs = new ArrayList<>();
 
         if (dto.getFirstName() != null && !dto.getFirstName().equals(customer.getFirstName())) {
-            auditLogs.add(createLog(customer, "firstName", customer.getFirstName(), dto.getFirstName(), operator));
+            pendingLogs.add(new AuditLogPendingDto("firstName", customer.getFirstName(), dto.getFirstName()));
             customer.setFirstName(dto.getFirstName());
         }
 
-
         if (dto.getLastName() != null && !dto.getLastName().equals(customer.getLastName())) {
-            auditLogs.add(createLog(customer, "lastName", customer.getLastName(), dto.getLastName(), operator));
+            pendingLogs.add(new AuditLogPendingDto("lastName", customer.getLastName(), dto.getLastName()));
             customer.setLastName(dto.getLastName());
         }
-
 
         if (dto.getNationalCode() != null && !dto.getNationalCode().equals(customer.getNationalCode())) {
             customerRepository.findByNationalCode(dto.getNationalCode()).ifPresent(c -> {
                 throw new IllegalArgumentException("This national code is already taken by another customer.");
             });
-            auditLogs.add(createLog(customer, "nationalCode", customer.getNationalCode(), dto.getNationalCode(), operator));
+            pendingLogs.add(new AuditLogPendingDto("nationalCode", customer.getNationalCode(), dto.getNationalCode()));
             customer.setNationalCode(dto.getNationalCode());
         }
 
-
         if (dto.getBirthday() != null && !dto.getBirthday().equals(customer.getBirthday())) {
-            auditLogs.add(createLog(customer, "birthday", customer.getBirthday().toString(), dto.getBirthday().toString(), operator));
+            pendingLogs.add(new AuditLogPendingDto("birthday",
+                    customer.getBirthday() != null ? customer.getBirthday().toString() : null,
+                    dto.getBirthday().toString()));
             customer.setBirthday(dto.getBirthday());
         }
 
-
         if (dto.getCustomerType() != null && !dto.getCustomerType().equals(customer.getCustomerType())) {
-            auditLogs.add(createLog(customer, "customerType", customer.getCustomerType().name(), dto.getCustomerType().name(), operator));
+            pendingLogs.add(new AuditLogPendingDto("customerType",
+                    customer.getCustomerType() != null ? customer.getCustomerType().name() : null,
+                    dto.getCustomerType().name()));
             customer.setCustomerType(dto.getCustomerType());
         }
 
-
         if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().equals(customer.getPhoneNumber())) {
-            auditLogs.add(createLog(customer, "phoneNumber", customer.getPhoneNumber(), dto.getPhoneNumber(), operator));
+            pendingLogs.add(new AuditLogPendingDto("phoneNumber", customer.getPhoneNumber(), dto.getPhoneNumber()));
             customer.setPhoneNumber(dto.getPhoneNumber());
         }
 
-
         if (dto.getAddress() != null && !dto.getAddress().equals(customer.getAddress())) {
-            auditLogs.add(createLog(customer, "address", customer.getAddress(), dto.getAddress(), operator));
+            pendingLogs.add(new AuditLogPendingDto("address", customer.getAddress(), dto.getAddress()));
             customer.setAddress(dto.getAddress());
         }
 
-
         if (dto.getPostalCode() != null && !dto.getPostalCode().equals(customer.getPostalCode())) {
-            auditLogs.add(createLog(customer, "postalCode", customer.getPostalCode(), dto.getPostalCode(), operator));
+            pendingLogs.add(new AuditLogPendingDto("postalCode", customer.getPostalCode(), dto.getPostalCode()));
             customer.setPostalCode(dto.getPostalCode());
         }
 
-        if (!auditLogs.isEmpty()) {
-            auditLogRepository.saveAll(auditLogs);
-        }
         customerRepository.save(customer);
-    }
 
-    private CustomerAuditLog createLog(Customer customer, String field, String oldVal, String newVal, String by) {
-        return CustomerAuditLog.builder()
-                .customer(customer)
-                .changedField(field)
-                .oldValue(oldVal)
-                .newValue(newVal)
-                .changedBy(by)
-                .build();
+        if (!pendingLogs.isEmpty()) {
+            auditLogService.saveAllLogs(customer, pendingLogs);
+        }
     }
 }

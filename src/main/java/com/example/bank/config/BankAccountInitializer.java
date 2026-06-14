@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 @Component
-@Order(1)
+@Order(2)
 public class BankAccountInitializer implements ApplicationRunner {
 
     private final AccountRepository accountRepository;
@@ -37,7 +37,7 @@ public class BankAccountInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         String bankAccountNumber = bankConfig.getAccountNumber();
 
-        System.out.println("🔍 [BankAccountInitializer] Checking system bank entities...");
+        System.out.println("[BankAccountInitializer] Checking system bank entities...");
 
         // Bank Customer
         Customer bankCustomer = customerRepository.findByNationalCode(BANK_NATIONAL_CODE)

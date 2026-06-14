@@ -12,22 +12,32 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
     open-in-view: false
 
-  security:
-    user:
-      name: admin1
-      password: admin1pass
 
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
+
+
+app-security:
+  default-admins:
+    - username: "admin_1"
+      password: "admin_pass_1"
+      nationalCode: "1234567890"
+      firstName: "name1"
+      lastName: "namee1"
+    - username: "admin_2"
+      password: "admin_pass_2"
+      nationalCode: "0987654321"
+      firstName: "name2"
+      lastName: "namee2"
 
 bank:
   account-number: 60606000060000
@@ -36,11 +46,12 @@ bank:
     min-limit: 1000
     max-limit: 50000
 
+
 logging:
   level:
-    root: warn
+    root: info
     org:
       hibernate:
         orm:
           jdbc:
-            bind: trace
+#            bind: trace
