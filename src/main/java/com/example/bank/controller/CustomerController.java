@@ -18,7 +18,7 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
-
+    // Takes customer profile data in the request body, registers the customer, and returns the newly created account number and initial balance.
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<CreateAccountResponseDTO>> registerCustomer(@Valid @RequestBody
                                                                                       CustomerRegisterRequestDTO dto) {
@@ -36,6 +36,7 @@ public class CustomerController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    // Takes a customer ID as a path variable and modified fields in the request body, updates the profile, and returns a basic success message.
     @PutMapping("/update/{id}")
     public ResponseEntity<ApiResponse<String>> updateCustomer(@PathVariable Long id,
             @Valid @RequestBody CustomerUpdateRequestDTO dto) {

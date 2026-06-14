@@ -17,7 +17,7 @@ public class AccountController {
 
     private final AccountService accountService;
 
-
+    // Takes a national code as a query parameter and returns the associated 14-digit bank account number.
     @GetMapping("/get-account-num")
     public ResponseEntity<ApiResponse<String>> getAccountNumber(@RequestParam String nationalCode) {
         log.info("Received request to fetch account number for National Code: {}", nationalCode);
@@ -28,6 +28,7 @@ public class AccountController {
         return new ResponseEntity<>(ApiResponse.success("Account number retrieved successfully.", accountNumber), HttpStatus.OK);
     }
 
+    // Takes a bank account number as a path variable and returns full profile and account details.
     @GetMapping("/{accountNumber}/details")
     public ResponseEntity<ApiResponse<AccountDetailsResponseDTO>> getAccountDetails(@PathVariable String accountNumber) {
         log.info("Received request to fetch account details for Account Number: {}", accountNumber);
@@ -38,6 +39,7 @@ public class AccountController {
         return new ResponseEntity<>(ApiResponse.success("Account details retrieved successfully.", details), HttpStatus.OK);
     }
 
+    // Takes a bank account number as a path variable and returns its current available cash balance.
     @GetMapping("/{accountNumber}/balance")
     public ResponseEntity<ApiResponse<Integer>> getAccountBalance(@PathVariable String accountNumber) {
         log.info("Received request to fetch balance for Account Number: {}", accountNumber);

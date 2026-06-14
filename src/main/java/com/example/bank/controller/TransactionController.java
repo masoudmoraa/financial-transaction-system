@@ -19,6 +19,8 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
+
+    // Takes transaction details in the request body, validates account requirements based on transaction type, and returns a tracking code with a PENDING status.
     @PostMapping("/request")
     public ResponseEntity<ApiResponse<TransactionResponseDTO>> requestTransaction(@Valid @RequestBody TransactionRequestDTO requestDto) {
         log.info("Received transaction request. Type: {}, Amount: {}", requestDto.getTransactionType(), requestDto.getAmount());
@@ -51,6 +53,7 @@ public class TransactionController {
     }
 
 
+    // Takes a unique tracking code as a path variable and returns the current execution status and creation date of the transaction.
     @GetMapping("/track/{trackingCode}")
     public ResponseEntity<ApiResponse<TransactionStatusResponseDTO>> trackTransaction(@PathVariable String trackingCode) {
         log.info("Received request to track transaction with Tracking Code: {}", trackingCode);
@@ -65,6 +68,7 @@ public class TransactionController {
     }
 
 
+    // Takes filtering criteria in the request body along with page and size parameters, and returns a paginated list of transaction history records.
     @PostMapping("/accountstatement")
     public ResponseEntity<ApiResponse<Page<AccountStatementResponseDTO>>>
     searchTransactions(
