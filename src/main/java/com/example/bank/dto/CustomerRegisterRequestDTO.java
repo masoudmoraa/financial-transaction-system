@@ -14,11 +14,11 @@ import java.time.LocalDateTime;
 public class CustomerRegisterRequestDTO {
 
     @NotBlank(message = "First name cannot be blank")
-    @Size(max = 50, message = "First name cannot exceed 50 characters")
+    @Size(min = 2, max = 50, message = "First name cannot exceed 50 characters")
     private String firstName;
 
     @NotBlank(message = "Last name cannot be blank")
-    @Size(max = 50, message = "Last name cannot exceed 50 characters")
+    @Size(min = 2, max = 50, message = "Last name cannot exceed 50 characters")
     private String lastName;
 
     @NotBlank(message = "National code cannot be blank")
@@ -36,7 +36,7 @@ public class CustomerRegisterRequestDTO {
     private String phoneNumber;
 
     @NotBlank(message = "Address cannot be blank")
-    @Size(max = 100, message = "Address cannot exceed 100 characters")
+    @Size(min = 5, max = 100, message = "Address cannot exceed 100 characters")
     private String address;
 
     @NotBlank(message = "Postal code cannot be blank")

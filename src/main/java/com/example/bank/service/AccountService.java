@@ -6,6 +6,7 @@ import com.example.bank.entity.Account;
 import com.example.bank.entity.Customer;
 import com.example.bank.repository.AccountRepository;
 import com.example.bank.util.AccountNumberGenerator;
+import com.example.bank.validator.AccountValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final AccountNumberGenerator accountNumberGenerator;
+    private final AccountValidator accountValidator;
 
     // Creates and saves a new active bank account for a given customer.
     @Transactional
@@ -39,6 +41,8 @@ public class AccountService {
 
     // Finds the bank account number associated with a specific national code.
     public String getAccountNumberByNationalCode(String nationalCode) {
+        accountValidator.validateNationalCode(nationalCode);
+
         Account account = accountRepository.findByCustomerNationalCode(nationalCode)
                 .orElseThrow(() -> new IllegalArgumentException("No account found for the given national code."));
         return account.getAccountNumber();
@@ -46,6 +50,8 @@ public class AccountService {
 
     // Retrieves complete account information along with owner profile details.
     public AccountDetailsResponseDTO getAccountDetails(String accountNumber) {
+        accountValidator.validateAccountNumber(accountNumber);
+
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found with number: " + accountNumber));
 
@@ -71,6 +77,8 @@ public class AccountService {
 
     // Returns the current available balance of a specific bank account.
     public Integer getAccountBalance(String accountNumber) {
+        accountValidator.validateAccountNumber(accountNumber);
+
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found with number: " + accountNumber));
         return account.getBalance();

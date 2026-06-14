@@ -2,7 +2,7 @@ package com.example.bank.service;
 
 import com.example.bank.dto.*;
 import com.example.bank.entity.Customer;
-import com.example.bank.repository.CustomerAuditLogRepository;
+import com.example.bank.validator.CustomerValidator;
 import com.example.bank.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +21,13 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final AccountService accountService;
     private final CustomerAuditLogService auditLogService;
+    private final CustomerValidator registerValidator;
 
     // Registers a new customer and automatically opens a bank account.
     @Transactional
     public CreateAccountResponseDTO registerCustomer(CustomerRegisterRequestDTO dto) {
+
+        registerValidator.validateBirthday(dto.getBirthday());
 
         Optional<Customer> existingCustomer = customerRepository.findByNationalCode(dto.getNationalCode());
         if (existingCustomer.isPresent()) {
@@ -75,6 +78,7 @@ public class CustomerService {
         }
 
         if (dto.getBirthday() != null && !dto.getBirthday().equals(customer.getBirthday())) {
+            registerValidator.validateBirthday(dto.getBirthday());
             pendingLogs.add(new AuditLogPendingDto("birthday",
                     customer.getBirthday() != null ? customer.getBirthday().toString() : null,
                     dto.getBirthday().toString()));

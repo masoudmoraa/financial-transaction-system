@@ -16,6 +16,7 @@ import com.example.bank.repository.TransactionRepository;
 import com.example.bank.repository.specification.TransactionSpecification;
 import com.example.bank.util.TransactionFeeCalculator;
 import com.example.bank.util.TransactionTrackingCodeGenerator;
+import com.example.bank.validator.AccountValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -38,6 +39,7 @@ public class TransactionService {
     private final TransactionFeeCalculator feeCalculator;
     private final BankConfig bankConfig;
     private final AccountStatementValidator validator;
+    private final AccountValidator accountValidator;
 
     // Registers a new transaction request and sends it to RabbitMQ.
     @Transactional
@@ -116,7 +118,9 @@ public class TransactionService {
 
     // Increases the destination account balance and logs the credit entry.
     private void handleDeposit(TransactionRequestDTO dto, Transaction tx) {
-        Account destAccount = getActiveAccountWithLock(dto.getDestinationAccount());
+        Account destAccount = getAccountWithLock(dto.getDestinationAccount());
+        // Validate that account is ACTIVE
+        accountValidator.validateAccountActive(destAccount);
 
         destAccount.setBalance(destAccount.getBalance() + dto.getAmount());
         accountRepository.save(destAccount);
@@ -127,7 +131,9 @@ public class TransactionService {
 
     // Decreases the source account balance and logs the debit entry.
     private void handleWithdraw(TransactionRequestDTO dto, Transaction tx) {
-        Account srcAccount = getActiveAccountWithLock(dto.getSourceAccount());
+        Account srcAccount = getAccountWithLock(dto.getSourceAccount());
+        // Validate that account is ACTIVE
+        accountValidator.validateAccountActive(srcAccount);
 
         if (srcAccount.getBalance() < dto.getAmount()) {
             throw new IllegalArgumentException("Insufficient account balance.");
@@ -145,10 +151,14 @@ public class TransactionService {
         String[] accountsForLocking = { dto.getSourceAccount(), dto.getDestinationAccount() };
         java.util.Arrays.sort(accountsForLocking);
 
-        Account srcAccount  = getActiveAccountWithLock(dto.getSourceAccount().equals(
+        Account srcAccount  = getAccountWithLock(dto.getSourceAccount().equals(
                 accountsForLocking[0]) ? accountsForLocking[0] : accountsForLocking[1]);
-        Account destAccount = getActiveAccountWithLock(dto.getDestinationAccount().equals(
+        Account destAccount = getAccountWithLock(dto.getDestinationAccount().equals(
                 accountsForLocking[0]) ? accountsForLocking[0] : accountsForLocking[1]);
+
+        // Validate that both accounts are ACTIVE using the shared validator component
+        accountValidator.validateAccountActive(srcAccount);
+        accountValidator.validateAccountActive(destAccount);
 
         int calculatedFee = feeCalculator.calculateTransferFee(dto.getAmount());
         int totalDeduction = dto.getAmount() + calculatedFee;
@@ -176,7 +186,7 @@ public class TransactionService {
         feeTx.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(feeTx);
 
-        Account bankAccount = getActiveAccountWithLock(bankConfig.getAccountNumber());
+        Account bankAccount = getAccountWithLock(bankConfig.getAccountNumber());
         bankAccount.setBalance(bankAccount.getBalance() + calculatedFee);
         accountRepository.save(bankAccount);
 
@@ -188,13 +198,10 @@ public class TransactionService {
     }
 
     // Fetches an active account from the database using a pessimistic lock.
-    private Account getActiveAccountWithLock(String accountNumber) {
+    private Account getAccountWithLock(String accountNumber) {
         Account account = accountRepository.findWithLockByAccountNumber(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found: " + accountNumber));
-
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new IllegalStateException("Account " + accountNumber + " status restriction: Account is not ACTIVE.");
-        }
+        
         return account;
     }
 
