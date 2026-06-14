@@ -1,12 +1,10 @@
 package com.example.bank.controller;
 
-import com.example.bank.dto.ApiResponse;
-import com.example.bank.dto.TransactionRequestDTO;
-import com.example.bank.dto.TransactionResponseDTO;
-import com.example.bank.dto.TransactionStatusResponseDTO;
+import com.example.bank.dto.*;
 import com.example.bank.enums.TransactionType;
 import com.example.bank.service.TransactionService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -55,6 +53,23 @@ public class TransactionController {
 
         return new ResponseEntity<>(
                 ApiResponse.success("Transaction status retrieved successfully.", statusDto),
+                HttpStatus.OK
+        );
+    }
+
+
+    @PostMapping("/accountstatement")
+    public ResponseEntity<ApiResponse<Page<AccountStatementResponseDTO>>>
+    searchTransactions(
+            @Valid @RequestBody AccountStatementRequestDTO dto,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        Page<AccountStatementResponseDTO> result =
+                transactionService.searchTransactions(dto, page, size);
+
+        return new ResponseEntity<>(
+                ApiResponse.success("Transactions retrieved successfully.", result),
                 HttpStatus.OK
         );
     }

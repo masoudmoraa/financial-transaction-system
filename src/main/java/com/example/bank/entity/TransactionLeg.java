@@ -7,7 +7,14 @@ import com.example.bank.enums.TransactionType;
 import com.example.bank.enums.TransactionDirection;
 
 @Entity
-@Table(name = "TRANSACTION_LEG")
+@Table(
+        name = "TRANSACTION_LEG",
+        indexes = {
+                @Index(name = "idx_leg_account_amount", columnList = "account_number, amount"),
+                @Index(name = "idx_leg_account_date", columnList = "account_number, created_at DESC"),
+                @Index(name = "idx_leg_tx_id", columnList = "transaction_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,10 +37,6 @@ public class TransactionLeg {
     @Enumerated(EnumType.STRING)
     @Column(name = "entry_type", nullable = false, length = 10)
     private TransactionDirection entryType;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_type", nullable = false, length = 20)
-    private TransactionType transactionType;
 
     @Column(name = "amount", nullable = false)
     private Integer amount;

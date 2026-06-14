@@ -5,6 +5,9 @@ import com.example.bank.config.RabbitMQConfig;
 import com.example.bank.dto.TransactionRequestDTO;
 import com.example.bank.dto.TransactionResponseDTO;
 import com.example.bank.dto.TransactionStatusResponseDTO;
+import com.example.bank.dto.AccountStatementRequestDTO;
+import com.example.bank.dto.AccountStatementResponseDTO;
+import org.springframework.data.domain.*;
 import com.example.bank.entity.Account;
 import com.example.bank.entity.TransactionLeg;
 import com.example.bank.entity.Transaction;
@@ -15,11 +18,14 @@ import com.example.bank.enums.TransactionType;
 import com.example.bank.repository.AccountRepository;
 import com.example.bank.repository.TransactionLegRepository;
 import com.example.bank.repository.TransactionRepository;
+import com.example.bank.repository.specification.TransactionSpecification;
 import com.example.bank.util.TransactionFeeCalculator;
 import com.example.bank.util.TransactionTrackingCodeGenerator;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.domain.Specification;
+import com.example.bank.validator.AccountStatementValidator;
 
 @Service
 public class TransactionService {
@@ -30,6 +36,7 @@ public class TransactionService {
     private final RabbitTemplate rabbitTemplate;
     private final TransactionFeeCalculator feeCalculator;
     private final BankConfig bankConfig;
+    private final AccountStatementValidator validator;
 
     private static final String BANK_FEE_ACCOUNT = "60606060606060";
 
@@ -38,13 +45,15 @@ public class TransactionService {
                               TransactionLegRepository legRepository,
                               RabbitTemplate rabbitTemplate,
                               TransactionFeeCalculator feeCalculator,
-                              BankConfig bankConfig) {
+                              BankConfig bankConfig,
+                              AccountStatementValidator validator) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.legRepository = legRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.feeCalculator = feeCalculator;
         this.bankConfig = bankConfig;
+        this.validator = validator;
     }
 
 
@@ -59,6 +68,7 @@ public class TransactionService {
         transaction.setTrackingCode(trackingCode);
         transaction.setSourceAccount(requestDto.getSourceAccount());
         transaction.setDestinationAccount(requestDto.getDestinationAccount());
+        transaction.setTransactionType(requestDto.getTransactionType());
         transaction.setAmount(requestDto.getAmount());
         transaction.setStatus(TransactionStatus.PENDING);
 
@@ -99,6 +109,7 @@ public class TransactionService {
             transactionRepository.save(txRequest);
 
         } catch (Exception e) {
+            System.out.println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
             txRequest.setStatus(TransactionStatus.FAILED);
             transactionRepository.save(txRequest);
 
@@ -127,7 +138,7 @@ public class TransactionService {
         destAccount.setBalance(destAccount.getBalance() + dto.getAmount());
         accountRepository.save(destAccount);
 
-        createLeg(tx, destAccount.getAccountNumber(), TransactionDirection.CREDIT, TransactionType.DEPOSIT,
+        createLeg(tx, destAccount.getAccountNumber(), TransactionDirection.CREDIT,
                 dto.getAmount(), destAccount.getBalance());
     }
 
@@ -141,7 +152,7 @@ public class TransactionService {
         srcAccount.setBalance(srcAccount.getBalance() - dto.getAmount());
         accountRepository.save(srcAccount);
 
-        createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT, TransactionType.WITHDRAW,
+        createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
                 dto.getAmount(), srcAccount.getBalance());
     }
 
@@ -169,9 +180,9 @@ public class TransactionService {
         accountRepository.save(destAccount);
 
 
-        createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT, TransactionType.TRANSFER,
+        createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
                 dto.getAmount(), srcAccount.getBalance() + calculatedFee);
-        createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT, TransactionType.TRANSFER,
+        createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
                 calculatedFee, srcAccount.getBalance());
 
         // (Fee from Src to Bank)
@@ -179,16 +190,17 @@ public class TransactionService {
         feeTx.setTrackingCode("FEE#" + tx.getTrackingCode());
         feeTx.setSourceAccount(srcAccount.getAccountNumber());
         feeTx.setDestinationAccount(bankConfig.getAccountNumber());
+        feeTx.setTransactionType(TransactionType.TRANSFER);
         feeTx.setAmount(calculatedFee);
         feeTx.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(feeTx);
 
 
         createLeg(feeTx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
-                TransactionType.TRANSFER, calculatedFee, srcAccount.getBalance());
+                calculatedFee, srcAccount.getBalance());
 
         createLeg(feeTx, BANK_FEE_ACCOUNT, TransactionDirection.CREDIT,
-                TransactionType.TRANSFER, calculatedFee, 0);
+                calculatedFee, destAccount.getBalance());
     }
 
     private Account getActiveAccountWithLock(String accountNumber) {
@@ -201,15 +213,45 @@ public class TransactionService {
         return account;
     }
 
-    private void createLeg(Transaction tx, String accountNum, TransactionDirection direction, TransactionType type,
+    private void createLeg(Transaction tx, String accountNum, TransactionDirection direction,
                            Integer amount, Integer postBalance) {
         TransactionLeg leg = new TransactionLeg();
         leg.setTransaction(tx);
         leg.setAccountNumber(accountNum);
         leg.setEntryType(direction);
-        leg.setTransactionType(type);
         leg.setAmount(amount);
         leg.setPostBalance(postBalance);
         legRepository.save(leg);
     }
+
+
+    public Page<AccountStatementResponseDTO> searchTransactions(
+            AccountStatementRequestDTO dto, int page, int size) {
+
+        validator.validate(dto);
+
+        Specification<Transaction> specification =
+                TransactionSpecification.build(dto);
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Page<Transaction> transactions = transactionRepository.findAll(specification, pageable);
+
+        return transactions.map(tx ->
+                AccountStatementResponseDTO.builder()
+                        .trackingCode(tx.getTrackingCode())
+                        .sourceAccount(tx.getSourceAccount())
+                        .destinationAccount(tx.getDestinationAccount())
+                        .transactionType(tx.getTransactionType())
+                        .amount(tx.getAmount())
+                        .status(tx.getStatus())
+                        .createdAt(tx.getCreatedAt())
+                        .build()
+        );
+    }
+
 }

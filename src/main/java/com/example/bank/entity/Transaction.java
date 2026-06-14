@@ -1,12 +1,19 @@
 package com.example.bank.entity;
 
+import com.example.bank.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import com.example.bank.enums.TransactionStatus;
 
 @Entity
-@Table(name = "TRANSACTION_REQUEST")
+@Table(
+        name = "TRANSACTION",
+        indexes = {
+                @Index(name = "idx_tx_source_date", columnList = "source_account, created_at DESC"),
+                @Index(name = "idx_tx_dest_date", columnList = "destination_account, created_at DESC")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,6 +34,10 @@ public class Transaction {
 
     @Column(name = "destination_account", length = 20)
     private String destinationAccount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", nullable = false, length = 20)
+    private TransactionType transactionType;
 
     @Column(name = "amount", nullable = false)
     private Integer amount;
