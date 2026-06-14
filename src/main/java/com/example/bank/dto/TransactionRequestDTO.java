@@ -13,8 +13,6 @@ import java.io.Serializable;
 
 @Data
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
 public class TransactionRequestDTO implements Serializable {
 
     @NotNull(message = "Transaction type is required.")

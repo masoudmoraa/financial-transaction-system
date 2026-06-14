@@ -2,12 +2,7 @@ package com.example.bank.service;
 
 import com.example.bank.config.BankConfig;
 import com.example.bank.config.RabbitMQConfig;
-import com.example.bank.dto.TransactionRequestDTO;
-import com.example.bank.dto.TransactionResponseDTO;
-import com.example.bank.dto.TransactionStatusResponseDTO;
-import com.example.bank.dto.AccountStatementRequestDTO;
-import com.example.bank.dto.AccountStatementResponseDTO;
-import org.springframework.data.domain.*;
+import com.example.bank.dto.*;
 import com.example.bank.entity.Account;
 import com.example.bank.entity.TransactionLeg;
 import com.example.bank.entity.Transaction;
@@ -21,13 +16,19 @@ import com.example.bank.repository.TransactionRepository;
 import com.example.bank.repository.specification.TransactionSpecification;
 import com.example.bank.util.TransactionFeeCalculator;
 import com.example.bank.util.TransactionTrackingCodeGenerator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.jpa.domain.Specification;
 import com.example.bank.validator.AccountStatementValidator;
 
+
+@RequiredArgsConstructor
 @Service
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -38,29 +39,9 @@ public class TransactionService {
     private final BankConfig bankConfig;
     private final AccountStatementValidator validator;
 
-    private static final String BANK_FEE_ACCOUNT = "60606060606060";
-
-    public TransactionService(TransactionRepository transactionRepository,
-                              AccountRepository accountRepository,
-                              TransactionLegRepository legRepository,
-                              RabbitTemplate rabbitTemplate,
-                              TransactionFeeCalculator feeCalculator,
-                              BankConfig bankConfig,
-                              AccountStatementValidator validator) {
-        this.transactionRepository = transactionRepository;
-        this.accountRepository = accountRepository;
-        this.legRepository = legRepository;
-        this.rabbitTemplate = rabbitTemplate;
-        this.feeCalculator = feeCalculator;
-        this.bankConfig = bankConfig;
-        this.validator = validator;
-    }
-
-
+    // Registers a new transaction request and sends it to RabbitMQ.
     @Transactional
     public TransactionResponseDTO submitRequest(TransactionRequestDTO requestDto) {
-
-        // Generate tracking code
         String trackingCode = TransactionTrackingCodeGenerator.generate();
         requestDto.setTrackingCode(trackingCode);
 
@@ -74,7 +55,6 @@ public class TransactionService {
 
         transactionRepository.save(transaction);
 
-        // Asynchronous processing
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.BANK_EXCHANGE,
                 RabbitMQConfig.TRANSACTION_ROUTING_KEY,
@@ -87,7 +67,7 @@ public class TransactionService {
                 .build();
     }
 
-
+    // Processes the queued transaction based on its specific type.
     @Transactional
     public void processTransaction(TransactionRequestDTO dto) {
         Transaction txRequest = transactionRepository.findByTrackingCode(dto.getTrackingCode())
@@ -108,8 +88,12 @@ public class TransactionService {
             txRequest.setStatus(TransactionStatus.SUCCESS);
             transactionRepository.save(txRequest);
 
+            log.info("Transaction completed successfully. Tracking Code: {}", dto.getTrackingCode());
+
         } catch (Exception e) {
-            System.out.println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+            log.error("Async banking execution failed for Tracking Code [{}]. Error: {}",
+                    dto.getTrackingCode(), e.getMessage(), e);
+
             txRequest.setStatus(TransactionStatus.FAILED);
             transactionRepository.save(txRequest);
 
@@ -117,7 +101,7 @@ public class TransactionService {
         }
     }
 
-
+    // Retrieves the current status details of a specific transaction.
     @Transactional(readOnly = true)
     public TransactionStatusResponseDTO getTransactionStatus(String trackingCode) {
         Transaction tx = transactionRepository.findByTrackingCode(trackingCode)
@@ -130,8 +114,7 @@ public class TransactionService {
                 .build();
     }
 
-
-
+    // Increases the destination account balance and logs the credit entry.
     private void handleDeposit(TransactionRequestDTO dto, Transaction tx) {
         Account destAccount = getActiveAccountWithLock(dto.getDestinationAccount());
 
@@ -142,6 +125,7 @@ public class TransactionService {
                 dto.getAmount(), destAccount.getBalance());
     }
 
+    // Decreases the source account balance and logs the debit entry.
     private void handleWithdraw(TransactionRequestDTO dto, Transaction tx) {
         Account srcAccount = getActiveAccountWithLock(dto.getSourceAccount());
 
@@ -156,9 +140,8 @@ public class TransactionService {
                 dto.getAmount(), srcAccount.getBalance());
     }
 
+    // Transfers money between accounts and deducts the bank service fee.
     private void handleTransfer(TransactionRequestDTO dto, Transaction tx) {
-        // Safe ordering for lock allocation to guarantee zero deadlocks across parallel channels
-        // Sort account numbers to guarantee a consistent locking order (Deadlock Prevention)
         String[] accountsForLocking = { dto.getSourceAccount(), dto.getDestinationAccount() };
         java.util.Arrays.sort(accountsForLocking);
 
@@ -179,13 +162,11 @@ public class TransactionService {
         accountRepository.save(srcAccount);
         accountRepository.save(destAccount);
 
-
         createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
                 dto.getAmount(), srcAccount.getBalance() + calculatedFee);
         createLeg(tx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
                 calculatedFee, srcAccount.getBalance());
 
-        // (Fee from Src to Bank)
         Transaction feeTx = new Transaction();
         feeTx.setTrackingCode("FEE#" + tx.getTrackingCode());
         feeTx.setSourceAccount(srcAccount.getAccountNumber());
@@ -195,14 +176,18 @@ public class TransactionService {
         feeTx.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.save(feeTx);
 
+        Account bankAccount = getActiveAccountWithLock(bankConfig.getAccountNumber());
+        bankAccount.setBalance(bankAccount.getBalance() + calculatedFee);
+        accountRepository.save(bankAccount);
 
         createLeg(feeTx, srcAccount.getAccountNumber(), TransactionDirection.DEBIT,
                 calculatedFee, srcAccount.getBalance());
 
-        createLeg(feeTx, BANK_FEE_ACCOUNT, TransactionDirection.CREDIT,
-                calculatedFee, destAccount.getBalance());
+        createLeg(feeTx, bankConfig.getAccountNumber(), TransactionDirection.CREDIT,
+                calculatedFee, bankAccount.getBalance());
     }
 
+    // Fetches an active account from the database using a pessimistic lock.
     private Account getActiveAccountWithLock(String accountNumber) {
         Account account = accountRepository.findWithLockByAccountNumber(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found: " + accountNumber));
@@ -213,6 +198,7 @@ public class TransactionService {
         return account;
     }
 
+    // Saves a single transaction ledger entry.
     private void createLeg(Transaction tx, String accountNum, TransactionDirection direction,
                            Integer amount, Integer postBalance) {
         TransactionLeg leg = new TransactionLeg();
@@ -224,7 +210,7 @@ public class TransactionService {
         legRepository.save(leg);
     }
 
-
+    // Searches and paginates transaction history based on filtering criteria.
     public Page<AccountStatementResponseDTO> searchTransactions(
             AccountStatementRequestDTO dto, int page, int size) {
 
@@ -253,5 +239,4 @@ public class TransactionService {
                         .build()
         );
     }
-
 }

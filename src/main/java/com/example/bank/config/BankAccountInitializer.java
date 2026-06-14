@@ -6,6 +6,7 @@ import com.example.bank.enums.AccountStatus;
 import com.example.bank.enums.CustomerType;
 import com.example.bank.repository.AccountRepository;
 import com.example.bank.repository.CustomerRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -14,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+// Component to create the system central bank profile and account on startup.
 @Component
 @Order(2)
+@Slf4j
 public class BankAccountInitializer implements ApplicationRunner {
 
     private final AccountRepository accountRepository;
@@ -37,12 +40,12 @@ public class BankAccountInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         String bankAccountNumber = bankConfig.getAccountNumber();
 
-        System.out.println("[BankAccountInitializer] Checking system bank entities...");
+        log.info("Checking system central bank entities in Oracle DB...");
 
-        // Bank Customer
+        // Bank - Customer
         Customer bankCustomer = customerRepository.findByNationalCode(BANK_NATIONAL_CODE)
                 .orElseGet(() -> {
-                    System.out.println("Central bank customer profile not found. Initializing profile...");
+                    log.warn("Central bank customer profile not found. Initializing core profile setup...");
 
                     Customer newCustomer = Customer.builder()
                             .firstName("CENTRAL")
@@ -54,15 +57,14 @@ public class BankAccountInitializer implements ApplicationRunner {
                             .address("Central Bank Headquarters")
                             .postalCode("1111111111")
                             .build();
-
                     return customerRepository.save(newCustomer);
                 });
 
-        // Bank Account
+        // Bank - Account
         boolean accountExists = accountRepository.existsById(bankAccountNumber);
 
         if (!accountExists) {
-            System.out.println("Central bank revenue account not found. Initializing account setup...");
+            log.warn("Central bank revenue account [{}] not found. Initializing account setup...", bankAccountNumber);
 
             Account bankAccount = Account.builder()
                     .accountNumber(bankAccountNumber)
@@ -72,9 +74,10 @@ public class BankAccountInitializer implements ApplicationRunner {
                     .build();
 
             accountRepository.save(bankAccount);
-            System.out.println("Central bank profile and revenue account are fully synchronized in Oracle DB.");
+
+            log.info("Central bank profile and revenue account [{}] are now fully synchronized in Oracle DB.", bankAccountNumber);
         } else {
-            System.out.println("Central bank setup verified and ready.");
+            log.info("Central bank setup verified and ready. Revenue Account: {}", bankAccountNumber);
         }
     }
 }

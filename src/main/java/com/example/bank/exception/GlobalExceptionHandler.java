@@ -3,17 +3,16 @@ package com.example.bank.exception;
 import com.example.bank.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
@@ -51,6 +50,22 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> response = ApiResponse.error(message);
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowedException(HttpRequestMethodNotSupportedException ex) {
+
+        String currentMethod = ex.getMethod();
+        String supportedMethods = ex.getSupportedHttpMethods() != null ? ex.getSupportedHttpMethods().toString() : "[]";
+
+        String message = String.format(
+                "HTTP method '%s' is not supported for this URL. Supported methods are: %s",
+                currentMethod,
+                supportedMethods
+        );
+
+        ApiResponse<Void> response = ApiResponse.error(message);
+        return new ResponseEntity<>(response, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @ExceptionHandler(Exception.class)

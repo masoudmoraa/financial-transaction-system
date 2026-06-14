@@ -4,26 +4,25 @@ import com.example.bank.dto.*;
 import com.example.bank.entity.Customer;
 import com.example.bank.repository.CustomerAuditLogRepository;
 import com.example.bank.repository.CustomerRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
 
+// Service class to handle customer registration and profile management.
+@RequiredArgsConstructor
 @Service
+@Slf4j
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final AccountService accountService;
     private final CustomerAuditLogService auditLogService;
 
-    public CustomerService(CustomerRepository customerRepository, CustomerAuditLogRepository auditLogRepository, AccountService accountService, CustomerAuditLogService auditLogService) {
-        this.customerRepository = customerRepository;
-        this.accountService = accountService;
-        this.auditLogService = auditLogService;
-    }
-
-
+    // Registers a new customer and automatically opens a bank account.
     @Transactional
     public CreateAccountResponseDTO registerCustomer(CustomerRegisterRequestDTO dto) {
 
@@ -48,11 +47,12 @@ public class CustomerService {
         return accountService.createAccount(savedCustomer);
     }
 
+    // Updates customer profile fields and generates historical audit logs.
     @Transactional
-    public void updateCustomer(CustomerUpdateRequestDTO dto) {
+    public void updateCustomer(CustomerUpdateRequestDTO dto, Long id) {
 
-        Customer customer = customerRepository.findById(dto.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + dto.getId()));
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + id));
 
         List<AuditLogPendingDto> pendingLogs = new ArrayList<>();
 
@@ -107,6 +107,8 @@ public class CustomerService {
 
         if (!pendingLogs.isEmpty()) {
             auditLogService.saveAllLogs(customer, pendingLogs);
+        } else {
+            log.debug("Update requested for Customer ID: {}, but no field changes were detected.", id);
         }
     }
 }

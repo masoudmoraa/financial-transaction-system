@@ -10,6 +10,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+
+// Component to insert initial admin users into the database on startup.
 @Component
 @Order(1)
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class AdminDataLoader implements ApplicationRunner {
     private final AdminConfig adminConfig;
     private final PasswordEncoder passwordEncoder;
 
+    // Reads default admins from config and saves them if they do not exist.
     @Override
     public void run(ApplicationArguments args) throws Exception {
         if (adminConfig.getDefaultAdmins() == null) {
@@ -30,12 +33,10 @@ public class AdminDataLoader implements ApplicationRunner {
         log.info("Starting Admin Database Initialization (Order: 1)...");
 
         for (AdminConfig.AdminDto adminDto : adminConfig.getDefaultAdmins()) {
-            // بررسی عدم وجود برای جلوگیری از رکوردهای تکراری در ری‌استارت‌ها
             if (adminRepository.findByUsername(adminDto.getUsername()).isEmpty()) {
 
                 Admin admin = Admin.builder()
                         .username(adminDto.getUsername())
-                        // هش کردن پسورد با BCryptPasswordEncoder پیش از ذخیره در دیتابیس
                         .password(passwordEncoder.encode(adminDto.getPassword()))
                         .nationalCode(adminDto.getNationalCode())
                         .firstName(adminDto.getFirstName())
