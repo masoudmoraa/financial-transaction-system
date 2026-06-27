@@ -8,11 +8,14 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.ArrayList;
 import java.util.List;
 
+// Specification class to build dynamic JPA queries for filtering database transaction records.
 public class TransactionSpecification {
 
+    // Private constructor to prevent instantiation of this utility class.
     private TransactionSpecification() {
     }
 
+    // Builds a dynamic JPA Specification based on the filtering criteria provided in the request DTO.
     public static Specification<Transaction> build(AccountStatementRequestDTO dto) {
 
         return (root, query, cb) -> {

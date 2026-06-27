@@ -2,7 +2,6 @@ package com.example.bank.dto;
 
 import com.example.bank.enums.CustomerType;
 import lombok.Data;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;

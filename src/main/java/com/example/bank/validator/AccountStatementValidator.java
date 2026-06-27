@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AccountStatementValidator {
 
+    // Validates that amount ranges and date boundaries in the request criteria are logically consistent.
     public void validate(
             AccountStatementRequestDTO dto) {
 
