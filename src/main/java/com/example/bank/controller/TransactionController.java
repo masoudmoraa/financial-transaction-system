@@ -3,6 +3,9 @@ package com.example.bank.controller;
 import com.example.bank.dto.*;
 import com.example.bank.enums.TransactionType;
 import com.example.bank.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,14 +18,24 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/transactions")
 @Slf4j
+@Tag(
+        name = "Transaction Management",
+        description = "APIs for submitting transactions, tracking their execution status, and retrieving account statements"
+)
 public class TransactionController {
 
     private final TransactionService transactionService;
 
 
-    // Takes transaction details in the request body, validates account requirements based on transaction type, and returns a tracking code with a PENDING status.
+    @Operation(
+            summary = "Submit a transaction request",
+            description = "Creates a new deposit, withdrawal, or transfer request. "
+                    + "The request is validated and queued for asynchronous processing. "
+                    + "A tracking code with PENDING status is returned immediately."
+    )
     @PostMapping("/request")
     public ResponseEntity<ApiResponse<TransactionResponseDTO>> requestTransaction(@Valid @RequestBody TransactionRequestDTO requestDto) {
+
         log.info("Received transaction request. Type: {}, Amount: {}", requestDto.getTransactionType(), requestDto.getAmount());
 
         // Business Logic Validation based on Transaction Type
@@ -53,9 +66,15 @@ public class TransactionController {
     }
 
 
-    // Takes a unique tracking code as a path variable and returns the current execution status and creation date of the transaction.
+    @Operation(
+            summary = "Track transaction status",
+            description = "Returns the current processing status of a transaction using its tracking code."
+    )
     @GetMapping("/track/{trackingCode}")
-    public ResponseEntity<ApiResponse<TransactionStatusResponseDTO>> trackTransaction(@PathVariable String trackingCode) {
+    public ResponseEntity<ApiResponse<TransactionStatusResponseDTO>> trackTransaction(
+            @Parameter(description = "Unique transaction tracking code", example = "TC-9510B512-6CE")
+            @PathVariable String trackingCode) {
+
         log.info("Received request to track transaction with Tracking Code: {}", trackingCode);
 
         TransactionStatusResponseDTO statusDto = transactionService.getTransactionStatus(trackingCode);
@@ -68,12 +87,17 @@ public class TransactionController {
     }
 
 
-    // Takes filtering criteria in the request body along with page and size parameters, and returns a paginated list of transaction history records.
+    @Operation(
+            summary = "Retrieve account statement",
+            description = "Returns a paginated list of transactions filtered by account number and optional criteria such as source account, destination account, amount range, date range, transaction type, and entry type."
+    )
     @PostMapping("/accountstatement")
     public ResponseEntity<ApiResponse<Page<AccountStatementResponseDTO>>>
     searchTransactions(
             @Valid @RequestBody AccountStatementRequestDTO dto,
+            @Parameter(description = "Zero-based page index", example = "0")
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of records per page", example = "10")
             @RequestParam(defaultValue = "5") int size) {
 
         log.info("Received request for Account Statement. Account Number: {}, Page: {}, Size: {}", dto.getAccountNumber(), page, size);
