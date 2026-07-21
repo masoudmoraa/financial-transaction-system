@@ -31,7 +31,12 @@ public class SecurityConfig {
                 // Disables CSRF protection since the API is stateless and does not use session-based cookies.
                 .csrf(AbstractHttpConfigurer::disable)
                 // Enforces that every single incoming HTTP request must be authorized under the specific role of ADMIN.
-                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ADMIN"))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        .anyRequest().hasRole("ADMIN"))
                 // Enables standard HTTP Basic Authentication with browser and Postman defaults.
                 .httpBasic(Customizer.withDefaults())
                 // Configures the application to be entirely stateless, preventing the server from creating or maintaining HTTP sessions.
