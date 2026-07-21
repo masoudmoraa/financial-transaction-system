@@ -49,8 +49,10 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> adminRepository.findByUsername(username)
-                .map(admin -> User.withUsername(admin.getUsername())
-                        .password(admin.getPassword()).roles("ADMIN").build())
+                .map(admin ->
+                        User.withUsername(admin.getUsername())
+                        .password(admin.getPassword())
+                        .roles("ADMIN").build())
                 .orElseThrow(() -> new UsernameNotFoundException("Admin not found: " + username));
     }
 }

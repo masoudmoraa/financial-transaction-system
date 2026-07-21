@@ -1,6 +1,7 @@
 package com.example.bank.dto;
 
 import com.example.bank.enums.TransactionType;
+import com.example.bank.enums.TransactionDirection;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -31,6 +32,8 @@ public class AccountStatementRequestDTO {
     private LocalDateTime fromDate;
 
     private LocalDateTime toDate;
+
+    private TransactionDirection entryType;
 
 }
 

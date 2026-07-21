@@ -69,9 +69,12 @@ public class TransactionService {
                 .build();
     }
 
+    /**
+     * @param dto
+     */
     // Processes the queued transaction based on its specific type.
     @Transactional
-    public void processTransaction(TransactionRequestDTO dto) {
+    public TransactionStatus processTransaction(TransactionRequestDTO dto) {
         Transaction txRequest = transactionRepository.findByTrackingCode(dto.getTrackingCode())
                 .orElseThrow(() -> new IllegalArgumentException("Transaction request not found for code: " + dto.getTrackingCode()));
 
@@ -91,6 +94,7 @@ public class TransactionService {
             transactionRepository.save(txRequest);
 
             log.info("Transaction completed successfully. Tracking Code: {}", dto.getTrackingCode());
+            return txRequest.getStatus();
 
         } catch (Exception e) {
             log.error("Async banking execution failed for Tracking Code [{}]. Error: {}",
@@ -98,8 +102,7 @@ public class TransactionService {
 
             txRequest.setStatus(TransactionStatus.FAILED);
             transactionRepository.save(txRequest);
-
-            throw new RuntimeException("Async banking execution aborted: " + e.getMessage(), e);
+            return txRequest.getStatus();
         }
     }
 

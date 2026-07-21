@@ -2,6 +2,7 @@ package com.example.bank.listener;
 
 import com.example.bank.config.RabbitMQConfig;
 import com.example.bank.dto.TransactionRequestDTO;
+import com.example.bank.enums.TransactionStatus;
 import com.example.bank.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -20,12 +21,12 @@ public class TransactionListener {
         log.info("Message dequeued from RabbitMQ. Processing started for Tracking Code: {}", transactionDto.getTrackingCode());
 
         try {
-            transactionService.processTransaction(transactionDto);
-            log.info("Asynchronous processing successfully completed for Tracking Code: {}", transactionDto.getTrackingCode());
+            TransactionStatus S = transactionService.processTransaction(transactionDto);
+            log.info("Asynchronous processing completed, Tracking Code: {}, Status: {}", transactionDto.getTrackingCode(), S );
 
         } catch (Exception e) {
-            log.error("Asynchronous processing failed for Tracking Code [{}]. Reason: {}",
-                    transactionDto.getTrackingCode(), e.getMessage(), e);
+            log.error("Asynchronous processing failed for Tracking Code [{}].",
+                    transactionDto.getTrackingCode());
         }
     }
 }
