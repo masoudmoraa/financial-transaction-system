@@ -4,7 +4,7 @@ spring:
 
 
   datasource:
-    url: jdbc:oracle:thin:@localhost:5500/bank_pdb
+    url: jdbc:oracle:thin:@host.docker.internal:5500/bank_pdb
     username: bank_user
     password: password
     driver-class-name: oracle.jdbc.OracleDriver
@@ -20,7 +20,7 @@ spring:
 
 
   rabbitmq:
-    host: localhost
+    host: host.docker.internal
     port: 5672
     username: guest
     password: guest
